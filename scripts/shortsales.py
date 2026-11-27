@@ -36,6 +36,7 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 PAGE = "https://www.set.or.th/th/market/statistics/short-sales/total-short-sales"
 ADV_N = 20
+Z_N = 5      # Z-score of short volume vs the previous Z_N trading days
 START = date(2026, 11, 16)   # first date the dashboard shows (user rule 2026-11-27)
 
 FIELDS = {  # SET API name -> short key in our JSON
@@ -165,7 +166,17 @@ def r2(x, n=2):
     return None if x is None else round(x, n)
 
 
-def build_day(d, raw, prev_rows, bars):
+def zscore(today, hist):
+    """(today - mean) / sample stdev of the previous days' short volumes (0 when not shorted).
+    None when there is not enough history or the history is flat."""
+    if len(hist) < Z_N:
+        return None
+    m = sum(hist) / len(hist)
+    sd = (sum((x - m) ** 2 for x in hist) / (len(hist) - 1)) ** 0.5
+    return r2((today - m) / sd) if sd else None
+
+
+def build_day(d, raw, prev_rows, bars, prev_tv=()):
     rows = []
     for r in raw["list"]["shortSales"]:
         row = {"s": r["symbol"]}
@@ -179,6 +190,7 @@ def build_day(d, raw, prev_rows, bars):
         close, chg, adv = price_stats(bars.get(r["symbol"]), d)
         row["close"], row["chg"], row["adv20"] = close, r2(chg), r2(adv, 0)
         row["dtc"] = r2(tos / adv) if adv and tos else (0 if adv else None)
+        row["z5"] = zscore(row["tv"] or 0, [m.get(r["symbol"], 0) for m in prev_tv])
         rows.append(row)
     rows.sort(key=lambda x: -(x["val"] or 0))
     s = raw.get("summary") or {}
@@ -247,15 +259,18 @@ def main():
     def tos_on(day):
         f = data / f"{day}.json"
         if f.exists():
-            return {r["s"]: {"tos": r.get("tos")} for r in json.loads(f.read_text(encoding="utf-8"))["rows"]}
+            return {r["s"]: {"tos": r.get("tos"), "tv": r.get("tv")}
+                    for r in json.loads(f.read_text(encoding="utf-8"))["rows"]}
         praw = json.loads((raw_dir / f"{day}.json").read_text(encoding="utf-8"))
-        return {r["symbol"]: {"tos": r.get("totalShortPosition")} for r in praw["list"]["shortSales"]}
+        return {r["symbol"]: {"tos": r.get("totalShortPosition"), "tv": r.get("totalVolume")}
+                for r in praw["list"]["shortSales"]}
 
     for d in todo:
         i = all_dates.index(d)
         prev_rows = tos_on(all_dates[i - 1]) if i > 0 else None
+        prev_tv = [{k: v["tv"] or 0 for k, v in tos_on(x).items()} for x in all_dates[max(0, i - Z_N):i]]
         raw = json.loads((raw_dir / f"{d}.json").read_text(encoding="utf-8"))
-        out = build_day(d, raw, prev_rows, bars)
+        out = build_day(d, raw, prev_rows, bars, prev_tv)
         out["prevDate"] = all_dates[i - 1].isoformat() if i > 0 else None
         priced = sum(1 for r in out["rows"] if r["chg"] is not None and r["val"])
         shorted = sum(1 for r in out["rows"] if r["val"])
