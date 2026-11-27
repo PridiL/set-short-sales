@@ -102,14 +102,14 @@ td.intra{color:var(--intra);font-weight:700}
           <th rowspan="2" class="sym sortable" data-k="s">Symbol</th>
           <th colspan="3">Short Sale Volume (Shares)</th>
           <th rowspan="2" class="sortable" data-k="val">Short Sale Value<br>(Baht)</th>
-          <th colspan="3">Outstanding Short Sale Volume (Shares)</th>
+          <th colspan="4">Outstanding Short Sale Volume (Shares)</th>
           <th rowspan="2" class="sortable" data-k="close">Closing Price</th>
           <th rowspan="2" class="new sortable" data-k="chg">% Change</th>
           <th rowspan="2" class="new sortable" data-k="dtc">Days to Cover<br>(Days)</th>
         </tr>
         <tr>
           <th class="sortable" data-k="tv">Total</th><th class="new sortable" data-k="add">Not Covered</th><th class="new sortable" data-k="intra">Intraday Covered</th>
-          <th class="sortable" data-k="tos">Total</th><th class="new sortable" data-k="dOS">Change (Shares)</th><th class="new sortable" data-k="dOSp">Change (%)</th>
+          <th class="sortable" data-k="ptos">Total T-1</th><th class="sortable" data-k="tos">Total</th><th class="new sortable" data-k="dOS">Change (Shares)</th><th class="new sortable" data-k="dOSp">Change (%)</th>
         </tr>
       </thead>
       <tbody id="body"></tbody>
@@ -121,7 +121,7 @@ td.intra{color:var(--intra);font-weight:700}
     <div><b>Not Covered</b> = the part of Short Sale Volume held overnight = the increase in Outstanding vs the previous trading day (capped at that day's Short Sale Volume) ·
       <b>Intraday Covered</b> = Short Sale Volume − Not Covered (shorted and bought back the same day) ·
       Outstanding is a net figure (new shorts held overnight − buy-backs of older positions), so if older positions were covered the same day, the true Not Covered can be higher than shown and Intraday Covered lower</div>
-    <div><b>Change (Shares) / Change (%)</b> = Outstanding Short Sale Volume vs the previous trading day (New = no outstanding position on the previous day)</div>
+    <div><b>Total T-1</b> = Outstanding Short Sale Volume at the end of the previous trading day · <b>Change (Shares) / Change (%)</b> = Total vs Total T-1 (New = no outstanding position on the previous day)</div>
     <div><b>Days to Cover</b> = Outstanding Short Sale Volume (Total) ÷ average daily trading volume of the last 20 trading days, including that day (TradingView)</div>
     <div>Outstanding short positions are reported to the SET by its members, who update them when clients buy back or after 60 days from the short sale · Data since 16 Nov 2026 · Updated Monday–Friday at 07:00 (Bangkok time)</div>
   </div>
@@ -161,7 +161,7 @@ async function getDay(d){
 function render(){
   if(!DAY) return;
   const q = $("#q").value.trim().toUpperCase(), all = $("#all").checked, hasPrev = !!DAY.prevDate;
-  let rows = DAY.rows.map(r => ({...r, ...split(r, hasPrev), dOS: hasPrev ? r.dOS : null, dOSp: osPct(r, hasPrev)}));
+  let rows = DAY.rows.map(r => ({...r, ...split(r, hasPrev), dOS: hasPrev ? r.dOS : null, ptos: hasPrev ? r.ptos : null, dOSp: osPct(r, hasPrev)}));
   if(!all) rows = rows.filter(r => r.tv);
   if(q) rows = rows.filter(r => r.s.includes(q));
   rows.sort((a,b) => {
@@ -176,13 +176,14 @@ function render(){
     <td class="${r.add ? "carry" : "dim"}">${n0(r.add)}</td>
     <td class="${r.intra ? "intra" : "dim"}">${n0(r.intra)}</td>
     <td class="grp b">${n2(r.val)}</td>
-    <td class="grp b">${n0(r.tos)}</td>
+    <td class="grp">${n0(r.ptos)}</td>
+    <td class="b">${n0(r.tos)}</td>
     <td class="${osCls(r.dOS)}">${r.dOS == null ? "-" : sgn(r.dOS, nf0.format)}</td>
     <td class="${osCls(r.dOS)}">${r.dOSp != null ? sgn(r.dOSp, nf2.format) + "%" : (hasPrev && r.tos && !r.ptos ? "New" : "-")}</td>
     <td class="grp b">${n2(r.close)}</td>
     <td class="${chgCls(r.chg)}">${r.chg == null ? "-" : sgn(r.chg, nf2.format) + "%"}</td>
     <td class="b">${r.dtc == null ? "-" : n2(r.dtc)}</td></tr>`).join("") ||
-    `<tr><td colspan="13" style="text-align:center;padding:24px" class="dim">No data</td></tr>`;
+    `<tr><td colspan="14" style="text-align:center;padding:24px" class="dim">No data</td></tr>`;
   document.querySelectorAll("th.sortable").forEach(th => {
     th.querySelector(".arr")?.remove();
     if(th.dataset.k === sortK) th.insertAdjacentHTML("beforeend", `<span class="arr">${sortDir < 0 ? "▼" : "▲"}</span>`);
@@ -216,13 +217,13 @@ async function load(d){
 
 function csv(){
   const hasPrev = !!DAY.prevDate;
-  const H = ["Rank","Symbol","Short Sale Volume Total","Not Covered","Intraday Covered","Short Sale Value (Baht)","Outstanding Short Sale Volume Total","Outstanding Change (Shares)","Outstanding Change (%)","Closing Price","% Change","Days to Cover"];
+  const H = ["Rank","Symbol","Short Sale Volume Total","Not Covered","Intraday Covered","Short Sale Value (Baht)","Outstanding Short Sale Volume Total T-1","Outstanding Short Sale Volume Total","Outstanding Change (Shares)","Outstanding Change (%)","Closing Price","% Change","Days to Cover"];
   const rows = [...document.querySelectorAll("#body tr")].length ? DAY.rows : [];
   const vis = [...document.querySelectorAll("#body td.sym")].map(td => td.textContent);
   const by = Object.fromEntries(rows.map(r => [r.s, r]));
   const lines = [H.join(",")].concat(vis.map((s,i) => { const r = by[s], x = split(r, hasPrev);
     const p = osPct(r, hasPrev);
-    return [i+1, s, r.tv, x.add, x.intra, r.val, r.tos, hasPrev ? r.dOS : "", p == null ? "" : p.toFixed(2), r.close, r.chg, r.dtc].map(v => v ?? "").join(","); }));
+    return [i+1, s, r.tv, x.add, x.intra, r.val, hasPrev ? r.ptos : "", r.tos, hasPrev ? r.dOS : "", p == null ? "" : p.toFixed(2), r.close, r.chg, r.dtc].map(v => v ?? "").join(","); }));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv"}));
   a.download = `SET_Short_Sales_${DAY.date}.csv`; a.click();
