@@ -11,18 +11,21 @@
   --bg:#f6f7f9; --card:#fff; --ink:#14181f; --muted:#5f6b7a; --line:#e3e7ec; --head:#eef1f5;
   --up:#0a8f3c; --down:#d42c2c; --flat:#808080; --accent:#1f5fbf; --carry:#b3261e; --carry-bg:#fdecea;
   --intra:#1d6b3a; --intra-bg:#e6f4ea; --cover-bg:#e8f0fe; --cover:#1f5fbf; --hl:#fff8e1; --newhead:#d9e4f5;
+  --q1:#0b6b2e; --q1-bg:#d3efdc; --q2:#3d7a14; --q2-bg:#e6f3d6; --q3:#555e69; --q3-bg:#e7eaee; --q4:#b3261e; --q4-bg:#fbe0de;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0f1318; --card:#171c23; --ink:#e7ebf0; --muted:#97a3b3; --line:#2a313b; --head:#1e252e;
     --up:#3ccf74; --down:#ff6b6b; --flat:#9aa4b1; --accent:#7aa7ff; --carry:#ff8a80; --carry-bg:#3a1f1e;
     --intra:#7fdc9c; --intra-bg:#1b3325; --cover-bg:#1c2a44; --cover:#9bbcff; --hl:#2e2a1a; --newhead:#22324a;
+    --q1:#7fdc9c; --q1-bg:#173a25; --q2:#b5de7a; --q2-bg:#2a3a18; --q3:#b4bdc9; --q3-bg:#2a313b; --q4:#ff8a80; --q4-bg:#3a1f1e;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0f1318; --card:#171c23; --ink:#e7ebf0; --muted:#97a3b3; --line:#2a313b; --head:#1e252e;
   --up:#3ccf74; --down:#ff6b6b; --flat:#9aa4b1; --accent:#7aa7ff; --carry:#ff8a80; --carry-bg:#3a1f1e;
   --intra:#7fdc9c; --intra-bg:#1b3325; --cover-bg:#1c2a44; --cover:#9bbcff; --hl:#2e2a1a; --newhead:#22324a;
+  --q1:#7fdc9c; --q1-bg:#173a25; --q2:#b5de7a; --q2-bg:#2a3a18; --q3:#b4bdc9; --q3-bg:#2a313b; --q4:#ff8a80; --q4-bg:#3a1f1e;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;font-size:14px}
@@ -60,6 +63,10 @@ td.b{font-weight:700}
 tbody tr:hover td{background:var(--hl)}
 .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}.flat{color:var(--flat);font-weight:700}
 .dim{color:var(--muted)}
+td.quad{text-align:left}
+.qt{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600}
+.q1{color:var(--q1);background:var(--q1-bg)}.q2{color:var(--q2);background:var(--q2-bg)}
+.q3{color:var(--q3);background:var(--q3-bg)}.q4{color:var(--q4);background:var(--q4-bg)}
 .notes{margin-top:16px;color:var(--muted);font-size:12.5px;line-height:1.65}
 .notes b{color:var(--ink)}
 .snap{position:absolute;left:0;top:0;z-index:-1;max-width:none;padding:24px}
@@ -100,6 +107,7 @@ tbody tr:hover td{background:var(--hl)}
           <th rowspan="2" class="sortable" data-k="close">Closing Price</th>
           <th rowspan="2" class="new sortable" data-k="chg">% Change</th>
           <th rowspan="2" class="new sortable" data-k="dtc">Days to Cover<br>(Days)</th>
+          <th rowspan="2" class="new sortable" data-k="qn">Short Position<br>Quadrant</th>
         </tr>
         <tr>
           <th class="sortable" data-k="ptos">Total T-1</th><th class="sortable" data-k="tos">Total</th><th class="new sortable" data-k="dOS">Change (Shares)</th><th class="new sortable" data-k="dOSp">Change (%)</th>
@@ -113,7 +121,8 @@ tbody tr:hover td{background:var(--hl)}
     <div><b>% Change</b> = Closing Price vs the previous trading day's close (TradingView, SET:&lt;symbol&gt;)</div>
     <div><b>Z-Score (vs Prev 5D)</b> = (Short Sale Volume today − average of the previous 5 trading days) ÷ standard deviation (sample) of those 5 days; a day with no short sale counts as 0 · "-" = the 5 previous days were all equal</div>
     <div><b>Total T-1</b> = Outstanding Short Sale Volume at the end of the previous trading day · <b>Change (Shares) / Change (%)</b> = Total vs Total T-1 (New = no outstanding position on the previous day)</div>
-    <div><b>Days to Cover</b> = Outstanding Short Sale Volume (Total) ÷ average daily trading volume of the last 20 trading days, including that day (TradingView)</div>
+    <div><b>Short Position Quadrant</b> (% Change × Outstanding Change): <b>Covering Rally</b> = price up, outstanding down · <b>Short Absorption</b> = price up, outstanding up · <b>Weak Demand</b> = price down, outstanding down · <b>Short Build Up</b> = price down, outstanding up · "-" = price or outstanding unchanged, or no data</div>
+    <div><b>Days to Cover</b> =Outstanding Short Sale Volume (Total) ÷ average daily trading volume of the last 20 trading days, including that day (TradingView)</div>
     <div>Outstanding short positions are reported to the SET by its members, who update them when clients buy back or after 60 days from the short sale · Data since 16 Nov 2026 · Updated Monday–Friday at 07:00 (Bangkok time)</div>
   </div>
 </div>
@@ -135,6 +144,12 @@ function osPct(r, hasPrev){ return hasPrev && r.dOS != null && r.ptos ? r.dOS / 
 function osCls(v){ return v == null ? "dim" : v > 0 ? "down" : v < 0 ? "up" : "flat"; }
 function chgCls(v){ return v == null ? "dim" : v > 0 ? "up" : v < 0 ? "down" : "flat"; }
 function sgn(v, f){ return v == null ? "-" : (v > 0 ? "+" : "") + f(v); }
+// price change x outstanding-short change; 1-4 in the user's order, null when either is flat or missing
+const QUADS = [null, "Covering Rally", "Short Absorption", "Weak Demand", "Short Build Up"];
+function quadOf(chg, dOS){
+  if(!chg || !dOS) return null;
+  return chg > 0 ? (dOS < 0 ? 1 : 2) : (dOS < 0 ? 3 : 4);
+}
 
 async function getDay(d){
   if(!cache[d]) cache[d] = fetch(`data/${d}.json?v=${INDEX.generated.replace(/\D/g,"")}`).then(r => r.json());
@@ -144,12 +159,14 @@ async function getDay(d){
 function render(){
   if(!DAY) return;
   const q = $("#q").value.trim().toUpperCase(), all = $("#all").checked, hasPrev = !!DAY.prevDate;
-  let rows = DAY.rows.map(r => ({...r, dOS: hasPrev ? r.dOS : null, ptos: hasPrev ? r.ptos : null, dOSp: osPct(r, hasPrev)}));
+  let rows = DAY.rows.map(r => ({...r, dOS: hasPrev ? r.dOS : null, ptos: hasPrev ? r.ptos : null, dOSp: osPct(r, hasPrev),
+    qn: quadOf(r.chg, hasPrev ? r.dOS : null)}));
   if(!all) rows = rows.filter(r => r.tv);
   if(q) rows = rows.filter(r => r.s.includes(q));
   rows.sort((a,b) => {
     const x = a[sortK], y = b[sortK];
     if(sortK === "s") return sortDir * x.localeCompare(y);
+    if(sortK === "qn") return (x == null) - (y == null) || sortDir * ((x||0) - (y||0)) || (b.val||0) - (a.val||0);
     const xn = x == null ? -Infinity : x, yn = y == null ? -Infinity : y;
     return sortDir * (xn - yn) || (b.val||0) - (a.val||0);
   });
@@ -164,7 +181,8 @@ function render(){
     <td class="${osCls(r.dOS)}">${r.dOSp != null ? sgn(r.dOSp, nf2.format) + "%" : (hasPrev && r.tos && !r.ptos ? "New" : "-")}</td>
     <td class="grp b">${n2(r.close)}</td>
     <td class="${chgCls(r.chg)}">${r.chg == null ? "-" : sgn(r.chg, nf2.format) + "%"}</td>
-    <td class="b">${r.dtc == null ? "-" : n2(r.dtc)}</td></tr>`).join("") ||
+    <td class="b">${r.dtc == null ? "-" : n2(r.dtc)}</td>
+    <td class="quad">${r.qn ? `<span class="qt q${r.qn}">${QUADS[r.qn]}</span>` : `<span class="dim">-</span>`}</td></tr>`).join("") ||
     `<tr><td colspan="13" style="text-align:center;padding:24px" class="dim">No data</td></tr>`;
   document.querySelectorAll("th.sortable").forEach(th => {
     th.querySelector(".arr")?.remove();
@@ -194,13 +212,13 @@ async function load(d){
 
 function csv(){
   const hasPrev = !!DAY.prevDate;
-  const H = ["Rank","Symbol","Short Sale Volume (Shares)","Z-Score (vs Prev 5D)","Short Sale Value (Baht)","Outstanding Short Sale Volume Total T-1","Outstanding Short Sale Volume Total","Outstanding Change (Shares)","Outstanding Change (%)","Closing Price","% Change","Days to Cover"];
+  const H = ["Rank","Symbol","Short Sale Volume (Shares)","Z-Score (vs Prev 5D)","Short Sale Value (Baht)","Outstanding Short Sale Volume Total T-1","Outstanding Short Sale Volume Total","Outstanding Change (Shares)","Outstanding Change (%)","Closing Price","% Change","Days to Cover","Short Position Quadrant"];
   const rows = [...document.querySelectorAll("#body tr")].length ? DAY.rows : [];
   const vis = [...document.querySelectorAll("#body td.sym")].map(td => td.textContent);
   const by = Object.fromEntries(rows.map(r => [r.s, r]));
   const lines = [H.join(",")].concat(vis.map((s,i) => { const r = by[s];
     const p = osPct(r, hasPrev);
-    return [i+1, s, r.tv, r.z5, r.val, hasPrev ? r.ptos : "", r.tos, hasPrev ? r.dOS : "", p == null ? "" : p.toFixed(2), r.close, r.chg, r.dtc].map(v => v ?? "").join(","); }));
+    return [i+1, s, r.tv, r.z5, r.val, hasPrev ? r.ptos : "", r.tos, hasPrev ? r.dOS : "", p == null ? "" : p.toFixed(2), r.close, r.chg, r.dtc, QUADS[quadOf(r.chg, hasPrev ? r.dOS : null)]].map(v => v ?? "").join(","); }));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv"}));
   a.download = `SET_Short_Sales_${DAY.date}.csv`; a.click();
@@ -259,7 +277,7 @@ let INDEX;
   $("#date").onchange = e => load(e.target.value);
   $("#q").oninput = render; $("#all").onchange = render; $("#csv").onclick = csv; $("#png").onclick = png;
   document.querySelectorAll("th.sortable").forEach(th => th.onclick = () => {
-    const k = th.dataset.k; sortDir = sortK === k ? -sortDir : (k === "s" ? 1 : -1); sortK = k; render(); });
+    const k = th.dataset.k; sortDir = sortK === k ? -sortDir : (k === "s" || k === "qn" ? 1 : -1); sortK = k; render(); });
   const h1 = $("#h1").getBoundingClientRect().height; document.documentElement.style.setProperty("--h1", h1 + "px");
   await load($("#date").value);
 })();
