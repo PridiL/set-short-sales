@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -81,13 +81,13 @@ td.intra{color:var(--intra);font-weight:700}
   <div class="top">
     <div>
       <h1>SET Short Sales Dashboard</h1>
-      <div class="sub">ธุรกรรมขายชอร์ตรายหลักทรัพย์ (SET และ mai) · ที่มา <a href="https://www.set.or.th/th/market/statistics/short-sales/total-short-sales" target="_blank" rel="noopener">set.or.th</a> · ราคา/ปริมาณซื้อขาย TradingView · <span id="gen"></span></div>
+      <div class="sub">Short sales by security (SET and mai) · Source: <a href="https://www.set.or.th/th/market/statistics/short-sales/total-short-sales" target="_blank" rel="noopener">set.or.th</a> · Prices/volume: TradingView · <span id="gen"></span></div>
     </div>
     <div class="controls">
-      <label for="date" class="dim">วันที่</label>
+      <label for="date" class="dim">Date</label>
       <select id="date"></select>
-      <input id="q" type="search" placeholder="ค้นหาหลักทรัพย์" size="12">
-      <label class="chk"><input type="checkbox" id="all"> แสดงหลักทรัพย์ที่ไม่มีการขายชอร์ตวันนี้</label>
+      <input id="q" type="search" placeholder="Search symbol" size="12">
+      <label class="chk"><input type="checkbox" id="all"> Show securities with no short sales on this date</label>
       <button id="csv">Download CSV</button>
       <button id="png">Download PNG</button>
     </div>
@@ -99,13 +99,13 @@ td.intra{color:var(--intra);font-weight:700}
       <thead>
         <tr id="h1">
           <th rowspan="2">#</th>
-          <th rowspan="2" class="sym sortable" data-k="s">หลักทรัพย์</th>
+          <th rowspan="2" class="sym sortable" data-k="s">Symbol</th>
           <th colspan="3">Short Sale Volume (Shares)</th>
           <th rowspan="2" class="sortable" data-k="val">Short Sale Value<br>(Baht)</th>
           <th colspan="3">Outstanding Short Sale Volume (Shares)</th>
           <th rowspan="2" class="sortable" data-k="close">Closing Price</th>
           <th rowspan="2" class="new sortable" data-k="chg">% Change</th>
-          <th rowspan="2" class="new sortable" data-k="dtc">Days to Cover<br>(วัน)</th>
+          <th rowspan="2" class="new sortable" data-k="dtc">Days to Cover<br>(Days)</th>
         </tr>
         <tr>
           <th class="sortable" data-k="tv">Total</th><th class="new sortable" data-k="add">Not Covered</th><th class="new sortable" data-k="intra">Intraday Covered</th>
@@ -116,21 +116,21 @@ td.intra{color:var(--intra);font-weight:700}
     </table>
   </div>
   <div class="notes">
-    <div><b>เรียงลำดับ</b> ตาม Short Sale Value จากมากไปน้อย (คลิกหัวคอลัมน์เพื่อเรียงใหม่) · คอลัมน์สีฟ้า = คอลัมน์ที่คำนวณเพิ่ม</div>
-    <div><b>% Change</b> = การเปลี่ยนแปลงของ Closing Price วันนั้นเทียบกับราคาปิดวันทำการก่อนหน้า (TradingView, SET:&lt;หลักทรัพย์&gt;)</div>
-    <div><b>Not Covered</b> = ส่วนของ Short Sale Volume ที่ถือสถานะข้ามวัน = Outstanding ที่เพิ่มขึ้นจากวันทำการก่อนหน้า (ไม่เกิน Short Sale Volume วันนั้น) ·
-      <b>Intraday Covered</b> = Short Sale Volume − Not Covered (ขายชอร์ตและซื้อคืนภายในวัน) ·
-      Outstanding เป็นยอดสุทธิ (ชอร์ตใหม่ที่ถือข้ามวัน − การซื้อคืนสถานะเดิม) ถ้ามีการซื้อคืนสถานะเก่าในวันเดียวกัน Not Covered จริงอาจสูงกว่าที่แสดง และ Intraday Covered อาจต่ำกว่า</div>
-    <div><b>Change (Shares) / Change (%)</b> = Outstanding Short Sale Volume เทียบกับวันทำการก่อนหน้า (New = ไม่มี Outstanding ในวันก่อนหน้า)</div>
-    <div><b>Days to Cover</b> = Outstanding Short Sale Volume (Total) ÷ ปริมาณซื้อขายเฉลี่ย 20 วันทำการล่าสุด (รวมวันนั้น, TradingView)</div>
-    <div>ข้อมูลการขายชอร์ตที่ยังไม่ได้ซื้อคืนเป็นข้อมูลที่ตลาดหลักทรัพย์ฯ ได้รับรายงานจากสมาชิก ซึ่งปรับปรุงเมื่อมีการซื้อคืนหรือเมื่อเกิน 60 วันนับจากวันที่ขายชอร์ต · เก็บข้อมูลตั้งแต่ 16 พ.ย. 2569 · อัปเดตทุกวันจันทร์–ศุกร์ 07:00 น.</div>
+    <div><b>Sorting:</b> by Short Sale Value, largest first (click a column header to re-sort) · Blue columns = calculated columns</div>
+    <div><b>% Change</b> = Closing Price vs the previous trading day's close (TradingView, SET:&lt;symbol&gt;)</div>
+    <div><b>Not Covered</b> = the part of Short Sale Volume held overnight = the increase in Outstanding vs the previous trading day (capped at that day's Short Sale Volume) ·
+      <b>Intraday Covered</b> = Short Sale Volume − Not Covered (shorted and bought back the same day) ·
+      Outstanding is a net figure (new shorts held overnight − buy-backs of older positions), so if older positions were covered the same day, the true Not Covered can be higher than shown and Intraday Covered lower</div>
+    <div><b>Change (Shares) / Change (%)</b> = Outstanding Short Sale Volume vs the previous trading day (New = no outstanding position on the previous day)</div>
+    <div><b>Days to Cover</b> = Outstanding Short Sale Volume (Total) ÷ average daily trading volume of the last 20 trading days, including that day (TradingView)</div>
+    <div>Outstanding short positions are reported to the SET by its members, who update them when clients buy back or after 60 days from the short sale · Data since 16 Nov 2026 · Updated Monday–Friday at 07:00 (Bangkok time)</div>
   </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const $ = s => document.querySelector(s);
-const TH_MON = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-const thDate = iso => { const [y,m,d] = iso.split("-").map(Number); return `${d} ${TH_MON[m-1]} ${y+543}`; };
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const thDate = iso => { const [y,m,d] = iso.split("-").map(Number); return `${d} ${MON[m-1]} ${y}`; };
 const nf0 = new Intl.NumberFormat("en-US",{maximumFractionDigits:0});
 const nf2 = new Intl.NumberFormat("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const n0 = v => v == null ? "-" : nf0.format(v);
@@ -182,7 +182,7 @@ function render(){
     <td class="grp b">${n2(r.close)}</td>
     <td class="${chgCls(r.chg)}">${r.chg == null ? "-" : sgn(r.chg, nf2.format) + "%"}</td>
     <td class="b">${r.dtc == null ? "-" : n2(r.dtc)}</td></tr>`).join("") ||
-    `<tr><td colspan="13" style="text-align:center;padding:24px" class="dim">ไม่พบข้อมูล</td></tr>`;
+    `<tr><td colspan="13" style="text-align:center;padding:24px" class="dim">No data</td></tr>`;
   document.querySelectorAll("th.sortable").forEach(th => {
     th.querySelector(".arr")?.remove();
     if(th.dataset.k === sortK) th.insertAdjacentHTML("beforeend", `<span class="arr">${sortDir < 0 ? "▼" : "▲"}</span>`);
@@ -196,16 +196,16 @@ function renderCards(){
   const totV = add + intra;
   const top = sh[0];
   $("#cards").innerHTML = [
-    ["มูลค่าการขายชอร์ตรวม", `${n2(s.value/1e6)} <small>ล้านบาท</small>`],
-    ["% เทียบมูลค่าซื้อขายรวม", pct(s.percentValue)],
-    ["จำนวนหลักทรัพย์ที่ถูกขายชอร์ต", `${sh.length} <small>ตัว</small>`],
+    ["Total Short Sale Value", `${n2(s.value/1e6)} <small>M Baht</small>`],
+    ["% of Total Trading Value", pct(s.percentValue)],
+    ["Securities Shorted", `${sh.length}`],
     ["Not Covered (Shares)", hasPrev ? `<span style="color:var(--carry)">${n0(add)}</span> <small>${totV ? (add/totV*100).toFixed(0) : 0}%</small>` : "-"],
     ["Intraday Covered (Shares)", hasPrev ? `<span style="color:var(--intra)">${n0(intra)}</span> <small>${totV ? (intra/totV*100).toFixed(0) : 0}%</small>` : "-"],
-    ["ถูกขายชอร์ตมากที่สุด", top ? `${top.s} <small>${n2(top.val/1e6)} ล้านบาท</small>` : "-"],
+    ["Most Shorted", top ? `${top.s} <small>${n2(top.val/1e6)} M Baht</small>` : "-"],
   ].map(([k,v]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
   const w = DAY.priced && DAY.priced[0] < DAY.priced[1];
   $("#warn").style.display = w ? "block" : "none";
-  if(w) $("#warn").textContent = `ยังไม่มีราคาจาก TradingView สำหรับ ${DAY.priced[1]-DAY.priced[0]} หลักทรัพย์ในวันนี้ (% Change / Days to Cover แสดงเป็น "-")`;
+  if(w) $("#warn").textContent = `TradingView has no price yet for ${DAY.priced[1]-DAY.priced[0]} securities on this date (% Change / Days to Cover shown as "-")`;
 }
 
 async function load(d){
@@ -230,11 +230,11 @@ function csv(){
 
 async function png(){
   const btn = $("#png"), label = btn.textContent;
-  btn.disabled = true; btn.textContent = "กำลังสร้างภาพ...";
+  btn.disabled = true; btn.textContent = "Creating image...";
   const box = document.createElement("div");
   box.className = "wrap snap";
   box.innerHTML = `<h1>SET Short Sales Dashboard · ${thDate(DAY.date)}</h1>
-    <div class="sub" style="margin-bottom:14px">ธุรกรรมขายชอร์ตรายหลักทรัพย์ (SET และ mai) · ที่มา set.or.th · ราคา/ปริมาณซื้อขาย TradingView · ${$("#gen").textContent} · pridil.github.io/set-short-sales</div>`;
+    <div class="sub" style="margin-bottom:14px">Short sales by security (SET and mai) · Source: set.or.th · Prices/volume: TradingView · ${$("#gen").textContent} · pridil.github.io/set-short-sales</div>`;
   box.appendChild($("#cards").cloneNode(true));
   const tb = document.createElement("div"); tb.className = "tablebox";
   tb.appendChild($("#tbl").cloneNode(true)); box.appendChild(tb);
@@ -267,14 +267,14 @@ async function png(){
     octx.drawImage(canvas, 0, 0);
     const a = document.createElement("a");
     a.href = out.toDataURL("image/png"); a.download = `SET_Short_Sales_${DAY.date}.png`; a.click();
-  }catch(e){ alert("สร้างภาพไม่สำเร็จ: " + e.message); }
+  }catch(e){ alert("Could not create the image: " + e.message); }
   finally{ box.remove(); btn.disabled = false; btn.textContent = label; }
 }
 
 let INDEX;
 (async () => {
   INDEX = await fetch("data/dates.json?t=" + Date.now()).then(r => r.json());
-  $("#gen").textContent = `อัปเดต ${INDEX.generated} น.`;
+  $("#gen").textContent = `Updated ${INDEX.generated} (Bangkok time)`;
   $("#date").innerHTML = INDEX.dates.map(x => `<option value="${x.date}">${thDate(x.date)}</option>`).join("");
   const want = location.hash.slice(1);
   if(INDEX.dates.some(x => x.date === want)) $("#date").value = want;
