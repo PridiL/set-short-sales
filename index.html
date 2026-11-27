@@ -59,13 +59,6 @@ td.grp{border-left:1px solid var(--line)}
 td.b{font-weight:700}
 tbody tr:hover td{background:var(--hl)}
 .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}.flat{color:var(--flat);font-weight:700}
-td.carry{color:var(--carry);font-weight:700}
-td.intra{color:var(--intra);font-weight:700}
-.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
-.tag.carry{background:var(--carry-bg);color:var(--carry)}
-.tag.intra{background:var(--intra-bg);color:var(--intra)}
-.tag.cover{background:var(--cover-bg);color:var(--cover)}
-.tag.na{color:var(--muted)}
 .dim{color:var(--muted)}
 .notes{margin-top:16px;color:var(--muted);font-size:12.5px;line-height:1.65}
 .notes b{color:var(--ink)}
@@ -117,9 +110,6 @@ td.intra{color:var(--intra);font-weight:700}
   <div class="notes">
     <div><b>Sorting:</b> by Short Sale Value, largest first (click a column header to re-sort) · Blue columns = calculated columns</div>
     <div><b>% Change</b> = Closing Price vs the previous trading day's close (TradingView, SET:&lt;symbol&gt;)</div>
-    <div><b>Not Covered</b> = the part of Short Sale Volume held overnight = the increase in Outstanding vs the previous trading day (capped at that day's Short Sale Volume) ·
-      <b>Intraday Covered</b> = Short Sale Volume − Not Covered (shorted and bought back the same day) ·
-      Outstanding is a net figure (new shorts held overnight − buy-backs of older positions), so if older positions were covered the same day, the true Not Covered can be higher than shown and Intraday Covered lower</div>
     <div><b>Total T-1</b> = Outstanding Short Sale Volume at the end of the previous trading day · <b>Change (Shares) / Change (%)</b> = Total vs Total T-1 (New = no outstanding position on the previous day)</div>
     <div><b>Days to Cover</b> = Outstanding Short Sale Volume (Total) ÷ average daily trading volume of the last 20 trading days, including that day (TradingView)</div>
     <div>Outstanding short positions are reported to the SET by its members, who update them when clients buy back or after 60 days from the short sale · Data since 16 Nov 2026 · Updated Monday–Friday at 07:00 (Bangkok time)</div>
@@ -138,14 +128,6 @@ const pct = v => v == null ? "-" : nf2.format(v) + "%";
 let DAY = null, sortK = "val", sortDir = -1;
 const cache = {};
 
-// Split today's short volume: the part added to the outstanding position (carried overnight)
-// = increase in outstanding vs the previous trading date, capped at today's short volume;
-// the rest was closed the same day.
-function split(r, hasPrev){
-  if(!hasPrev || r.dOS == null || !r.tv) return {add:null, intra:null};
-  const add = Math.max(0, Math.min(r.dOS, r.tv));
-  return {add, intra: r.tv - add};
-}
 // % change of the outstanding position vs the previous trading date (null when there was none)
 function osPct(r, hasPrev){ return hasPrev && r.dOS != null && r.ptos ? r.dOS / r.ptos * 100 : null; }
 function osCls(v){ return v == null ? "dim" : v > 0 ? "down" : v < 0 ? "up" : "flat"; }
@@ -160,7 +142,7 @@ async function getDay(d){
 function render(){
   if(!DAY) return;
   const q = $("#q").value.trim().toUpperCase(), all = $("#all").checked, hasPrev = !!DAY.prevDate;
-  let rows = DAY.rows.map(r => ({...r, ...split(r, hasPrev), dOS: hasPrev ? r.dOS : null, ptos: hasPrev ? r.ptos : null, dOSp: osPct(r, hasPrev)}));
+  let rows = DAY.rows.map(r => ({...r, dOS: hasPrev ? r.dOS : null, ptos: hasPrev ? r.ptos : null, dOSp: osPct(r, hasPrev)}));
   if(!all) rows = rows.filter(r => r.tv);
   if(q) rows = rows.filter(r => r.s.includes(q));
   rows.sort((a,b) => {
@@ -189,16 +171,11 @@ function render(){
 
 function renderCards(){
   const s = DAY.summary, sh = DAY.rows.filter(r => r.tv), hasPrev = !!DAY.prevDate;
-  let add = 0, intra = 0;
-  sh.forEach(r => { const x = split(r, hasPrev); add += x.add || 0; intra += x.intra || 0; });
-  const totV = add + intra;
   const top = sh[0];
   $("#cards").innerHTML = [
     ["Total Short Sale Value", `${n2(s.value/1e6)} <small>M Baht</small>`],
     ["% of Total Trading Value", pct(s.percentValue)],
     ["Securities Shorted", `${sh.length}`],
-    ["Not Covered (Shares)", hasPrev ? `<span style="color:var(--carry)">${n0(add)}</span> <small>${totV ? (add/totV*100).toFixed(0) : 0}%</small>` : "-"],
-    ["Intraday Covered (Shares)", hasPrev ? `<span style="color:var(--intra)">${n0(intra)}</span> <small>${totV ? (intra/totV*100).toFixed(0) : 0}%</small>` : "-"],
     ["Most Shorted", top ? `${top.s} <small>${n2(top.val/1e6)} M Baht</small>` : "-"],
   ].map(([k,v]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
   const w = DAY.priced && DAY.priced[0] < DAY.priced[1];
@@ -218,7 +195,7 @@ function csv(){
   const rows = [...document.querySelectorAll("#body tr")].length ? DAY.rows : [];
   const vis = [...document.querySelectorAll("#body td.sym")].map(td => td.textContent);
   const by = Object.fromEntries(rows.map(r => [r.s, r]));
-  const lines = [H.join(",")].concat(vis.map((s,i) => { const r = by[s], x = split(r, hasPrev);
+  const lines = [H.join(",")].concat(vis.map((s,i) => { const r = by[s];
     const p = osPct(r, hasPrev);
     return [i+1, s, r.tv, r.val, hasPrev ? r.ptos : "", r.tos, hasPrev ? r.dOS : "", p == null ? "" : p.toFixed(2), r.close, r.chg, r.dtc].map(v => v ?? "").join(","); }));
   const a = document.createElement("a");
