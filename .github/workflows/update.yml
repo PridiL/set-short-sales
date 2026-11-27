@@ -1,13 +1,14 @@
 name: update
 
 # Weekday morning refresh of the SET short-sales dashboard.
-#  - schedule: 06:45 Bangkok Mon-Fri (GitHub's own cron, often runs late)
-#  - workflow_dispatch: punctual 07:00 trigger from cron-job.org; a run that finds
-#    nothing new skips the deploy, so extra dispatches are harmless
+#  - workflow_dispatch: the punctual 07:00 Bangkok Mon-Fri trigger from cron-job.org;
+#    a run that finds nothing new skips the deploy, so extra dispatches are harmless
+#  - schedule: 07:15 Bangkok Mon-Fri fallback (GitHub's own cron, often runs late);
+#    does nothing if the 07:00 run already got the data
 #  - push to index.html: republish the page as-is
 on:
   schedule:
-    - cron: "45 23 * * 0-4"
+    - cron: "15 0 * * 1-5"
   workflow_dispatch:
     inputs:
       refetch:
