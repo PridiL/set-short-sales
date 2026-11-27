@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SET Short Sales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --ink:#14181f; --muted:#5f6b7a; --line:#e3e7ec; --head:#eef1f5;
+  --up:#0a8f3c; --down:#d42c2c; --flat:#808080; --accent:#1f5fbf; --carry:#b3261e; --carry-bg:#fdecea;
+  --intra:#1d6b3a; --intra-bg:#e6f4ea; --cover-bg:#e8f0fe; --cover:#1f5fbf; --hl:#fff8e1;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --card:#171c23; --ink:#e7ebf0; --muted:#97a3b3; --line:#2a313b; --head:#1e252e;
+    --up:#3ccf74; --down:#ff6b6b; --flat:#9aa4b1; --accent:#7aa7ff; --carry:#ff8a80; --carry-bg:#3a1f1e;
+    --intra:#7fdc9c; --intra-bg:#1b3325; --cover-bg:#1c2a44; --cover:#9bbcff; --hl:#2e2a1a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --card:#171c23; --ink:#e7ebf0; --muted:#97a3b3; --line:#2a313b; --head:#1e252e;
+  --up:#3ccf74; --down:#ff6b6b; --flat:#9aa4b1; --accent:#7aa7ff; --carry:#ff8a80; --carry-bg:#3a1f1e;
+  --intra:#7fdc9c; --intra-bg:#1b3325; --cover-bg:#1c2a44; --cover:#9bbcff; --hl:#2e2a1a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;font-size:14px}
+.wrap{max-width:1680px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:22px;margin:0 0 2px}
+.sub{color:var(--muted);font-size:13px}
+.sub a{color:var(--accent)}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input[type=search],button{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+button{cursor:pointer}
+button:hover{border-color:var(--accent)}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.card .k{color:var(--muted);font-size:12px}
+.card .v{font-size:20px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.card .v small{font-size:12px;font-weight:500;color:var(--muted)}
+.tablebox{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:78vh}
+table{border-collapse:separate;border-spacing:0;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+thead th{background:var(--head);position:sticky;font-weight:600;font-size:12.5px;text-align:center;z-index:2;border-right:1px solid var(--line)}
+thead tr:nth-child(1) th{top:0}
+thead tr:nth-child(2) th{top:var(--h1,34px)}
+thead th.new{background:color-mix(in srgb,var(--accent) 14%,var(--head))}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--accent)}
+th .arr{font-size:10px;margin-left:3px;color:var(--accent)}
+td{text-align:right}
+td.sym,th.sym{position:sticky;left:0;z-index:1;background:var(--card);text-align:left;font-weight:700}
+thead th.sym{z-index:3;background:var(--head)}
+td.rank{color:var(--muted);text-align:center;font-size:12px}
+td.grp{border-left:1px solid var(--line)}
+td.b{font-weight:700}
+tbody tr:hover td{background:var(--hl)}
+.up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}.flat{color:var(--flat);font-weight:700}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.tag.carry{background:var(--carry-bg);color:var(--carry)}
+.tag.intra{background:var(--intra-bg);color:var(--intra)}
+.tag.cover{background:var(--cover-bg);color:var(--cover)}
+.tag.na{color:var(--muted)}
+.dim{color:var(--muted)}
+.notes{margin-top:16px;color:var(--muted);font-size:12.5px;line-height:1.65}
+.notes b{color:var(--ink)}
+.warn{background:var(--carry-bg);color:var(--carry);padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none}
+@media (max-width:640px){h1{font-size:18px}.card .v{font-size:17px}th,td{padding:5px 7px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>SET Short Sales Dashboard</h1>
+      <div class="sub">ธุรกรรมขายชอร์ตรายหลักทรัพย์ (SET และ mai) · ที่มา <a href="https://www.set.or.th/th/market/statistics/short-sales/total-short-sales" target="_blank" rel="noopener">set.or.th</a> · ราคา/ปริมาณซื้อขาย TradingView · <span id="gen"></span></div>
+    </div>
+    <div class="controls">
+      <label for="date" class="dim">วันที่</label>
+      <select id="date"></select>
+      <input id="q" type="search" placeholder="ค้นหาหลักทรัพย์" size="12">
+      <label class="chk"><input type="checkbox" id="all"> แสดงหลักทรัพย์ที่ไม่มีการขายชอร์ตวันนี้</label>
+      <button id="csv">Download CSV</button>
+    </div>
+  </div>
+  <div class="warn" id="warn"></div>
+  <div class="cards" id="cards"></div>
+  <div class="tablebox">
+    <table id="tbl">
+      <thead>
+        <tr id="h1">
+          <th rowspan="2">#</th>
+          <th rowspan="2" class="sym sortable" data-k="s">หลักทรัพย์</th>
+          <th colspan="3">ปริมาณการขายชอร์ต (หุ้น)</th>
+          <th rowspan="2" class="sortable" data-k="val">มูลค่าการขายชอร์ต<br>(บาท)</th>
+          <th rowspan="2" class="sortable" data-k="pv">% มูลค่าการขายชอร์ต<br>เทียบกับมูลค่าการซื้อขายรวม</th>
+          <th colspan="3">ปริมาณการขายชอร์ตที่ยังไม่ได้ซื้อคืน ณ สิ้นวัน (หุ้น)</th>
+          <th rowspan="2" class="sortable" data-k="pos">ที่ยังไม่ได้ซื้อคืน/<br>หุ้นชำระแล้ว (%)</th>
+          <th rowspan="2" class="new sortable" data-k="close">ราคาปิด</th>
+          <th rowspan="2" class="new sortable" data-k="chg">% Change</th>
+          <th rowspan="2" class="new sortable" data-k="dOS">Δ ที่ยังไม่ได้ซื้อคืน<br>เทียบวันก่อน (หุ้น)</th>
+          <th rowspan="2" class="new sortable" data-k="carry">ชอร์ตวันนี้<br>ถือข้ามวัน?</th>
+          <th rowspan="2" class="new sortable" data-k="dtc">Days to Cover<br>(วัน)</th>
+        </tr>
+        <tr>
+          <th class="sortable" data-k="lv">Local</th><th class="sortable" data-k="nv">NVDR</th><th class="sortable" data-k="tv">ทั้งหมด</th>
+          <th class="sortable" data-k="los">Local</th><th class="sortable" data-k="nos">NVDR</th><th class="sortable" data-k="tos">ทั้งหมด</th>
+        </tr>
+      </thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+  <div class="notes">
+    <div><b>เรียงลำดับ</b> ตามมูลค่าการขายชอร์ตจากมากไปน้อย (คลิกหัวคอลัมน์เพื่อเรียงใหม่) · คอลัมน์สีฟ้า = คอลัมน์ที่คำนวณเพิ่ม</div>
+    <div><b>% Change</b> = การเปลี่ยนแปลงของราคาปิดวันนั้นเทียบกับราคาปิดวันทำการก่อนหน้า (TradingView, SET:&lt;หลักทรัพย์&gt;)</div>
+    <div><b>Δ ที่ยังไม่ได้ซื้อคืน</b> = ปริมาณที่ยังไม่ได้ซื้อคืน ณ สิ้นวัน (ทั้งหมด) − ของวันทำการก่อนหน้า ·
+      <span class="tag carry">ถือข้ามวัน</span> มีการขายชอร์ตวันนี้และยอดที่ยังไม่ได้ซื้อคืนเพิ่มขึ้น (ตัวเลขในวงเล็บ = Δ ÷ ปริมาณชอร์ตวันนี้ คือสัดส่วนโดยประมาณที่ถือข้ามวัน) ·
+      <span class="tag intra">ปิดในวัน</span> มีการขายชอร์ตวันนี้แต่ยอดที่ยังไม่ได้ซื้อคืนไม่เพิ่ม/ลดลง ·
+      <span class="tag cover">ซื้อคืน</span> ไม่มีการขายชอร์ตวันนี้แต่ยอดลดลง.
+      Δ เป็นยอดสุทธิ (ชอร์ตใหม่ที่ถือข้ามวัน − การซื้อคืนของสถานะเดิม) ดังนั้นถ้ามีการซื้อคืนสถานะเก่าในวันเดียวกัน ยอดถือข้ามวันจริงอาจสูงกว่า Δ</div>
+    <div><b>Days to Cover</b> = ปริมาณที่ยังไม่ได้ซื้อคืน ณ สิ้นวัน (ทั้งหมด) ÷ ปริมาณซื้อขายเฉลี่ย 20 วันทำการล่าสุด (รวมวันนั้น, TradingView)</div>
+    <div>ข้อมูลการขายชอร์ตที่ยังไม่ได้ซื้อคืนเป็นข้อมูลที่ตลาดหลักทรัพย์ฯ ได้รับรายงานจากสมาชิก ซึ่งปรับปรุงเมื่อมีการซื้อคืนหรือเมื่อเกิน 60 วันนับจากวันที่ขายชอร์ต · ตลท. เปิดให้ดูย้อนหลังไม่เกิน 6 เดือน · อัปเดตทุกวันจันทร์–ศุกร์ 07:00 น.</div>
+  </div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const TH_MON = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const thDate = iso => { const [y,m,d] = iso.split("-").map(Number); return `${d} ${TH_MON[m-1]} ${y+543}`; };
+const nf0 = new Intl.NumberFormat("en-US",{maximumFractionDigits:0});
+const nf2 = new Intl.NumberFormat("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const n0 = v => v == null ? "-" : nf0.format(v);
+const n2 = v => v == null ? "-" : nf2.format(v);
+const pct = v => v == null ? "-" : nf2.format(v) + "%";
+let DAY = null, sortK = "val", sortDir = -1;
+const cache = {};
+
+function status(r, hasPrev){
+  if(!hasPrev || r.dOS == null) return {k:"na", t:"-", rank:-1};
+  if(r.tv){
+    if(r.dOS > 0){ const share = Math.min(r.dOS / r.tv, 1) * 100;
+      return {k:"carry", t:`ถือข้ามวัน (${share.toFixed(0)}%)`, rank:2 + share/1000}; }
+    return {k:"intra", t:"ปิดในวัน", rank:1};
+  }
+  if(r.dOS < 0) return {k:"cover", t:"ซื้อคืน", rank:0};
+  return {k:"na", t:"-", rank:-1};
+}
+function chgCls(v){ return v == null ? "dim" : v > 0 ? "up" : v < 0 ? "down" : "flat"; }
+function sgn(v, f){ return v == null ? "-" : (v > 0 ? "+" : "") + f(v); }
+
+async function getDay(d){
+  if(!cache[d]) cache[d] = fetch(`data/${d}.json?v=${INDEX.generated.replace(/\D/g,"")}`).then(r => r.json());
+  return cache[d];
+}
+
+function render(){
+  if(!DAY) return;
+  const q = $("#q").value.trim().toUpperCase(), all = $("#all").checked, hasPrev = !!DAY.prevDate;
+  let rows = DAY.rows.map(r => ({...r, st: status(r, hasPrev)}));
+  rows.forEach(r => r.carry = r.st.rank);
+  if(!all) rows = rows.filter(r => r.tv);
+  if(q) rows = rows.filter(r => r.s.includes(q));
+  rows.sort((a,b) => {
+    const x = a[sortK], y = b[sortK];
+    if(sortK === "s") return sortDir * x.localeCompare(y);
+    const xn = x == null ? -Infinity : x, yn = y == null ? -Infinity : y;
+    return sortDir * (xn - yn) || (b.val||0) - (a.val||0);
+  });
+  $("#body").innerHTML = rows.map((r,i) => `<tr>
+    <td class="rank">${i+1}</td><td class="sym">${r.s}</td>
+    <td class="grp">${n0(r.lv)}</td><td>${n0(r.nv)}</td><td class="b">${n0(r.tv)}</td>
+    <td class="grp b">${n2(r.val)}</td><td>${pct(r.pv)}</td>
+    <td class="grp">${n0(r.los)}</td><td>${n0(r.nos)}</td><td class="b">${n0(r.tos)}</td>
+    <td>${pct(r.pos)}</td>
+    <td class="grp b">${n2(r.close)}</td>
+    <td class="${chgCls(r.chg)}">${r.chg == null ? "-" : sgn(r.chg, nf2.format) + "%"}</td>
+    <td class="${r.dOS > 0 ? "down" : r.dOS < 0 ? "up" : "flat"}">${hasPrev ? sgn(r.dOS, nf0.format) : "-"}</td>
+    <td style="text-align:center"><span class="tag ${r.st.k}">${r.st.t}</span></td>
+    <td class="b">${r.dtc == null ? "-" : n2(r.dtc)}</td></tr>`).join("") ||
+    `<tr><td colspan="16" style="text-align:center;padding:24px" class="dim">ไม่พบข้อมูล</td></tr>`;
+  document.querySelectorAll("th.sortable").forEach(th => {
+    th.querySelector(".arr")?.remove();
+    if(th.dataset.k === sortK) th.insertAdjacentHTML("beforeend", `<span class="arr">${sortDir < 0 ? "▼" : "▲"}</span>`);
+  });
+}
+
+function renderCards(){
+  const s = DAY.summary, sh = DAY.rows.filter(r => r.tv), hasPrev = !!DAY.prevDate;
+  const carry = sh.filter(r => hasPrev && r.dOS > 0).length, intra = sh.length - (hasPrev ? carry : sh.length);
+  const totOS = DAY.rows.reduce((a,r) => a + (r.tos||0), 0);
+  const top = sh[0];
+  $("#cards").innerHTML = [
+    ["มูลค่าการขายชอร์ตรวม", `${n2(s.value/1e6)} <small>ล้านบาท</small>`],
+    ["% เทียบมูลค่าซื้อขายรวม", pct(s.percentValue)],
+    ["จำนวนหลักทรัพย์ที่ถูกขายชอร์ต", `${sh.length} <small>ตัว</small>`],
+    ["ถือข้ามวัน / ปิดในวัน", hasPrev ? `<span style="color:var(--carry)">${carry}</span> / <span style="color:var(--intra)">${intra}</span>` : "-"],
+    ["ถูกขายชอร์ตมากที่สุด", top ? `${top.s} <small>${n2(top.val/1e6)} ล้านบาท</small>` : "-"],
+  ].map(([k,v]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+  const w = DAY.priced && DAY.priced[0] < DAY.priced[1];
+  $("#warn").style.display = w ? "block" : "none";
+  if(w) $("#warn").textContent = `ยังไม่มีราคาจาก TradingView สำหรับ ${DAY.priced[1]-DAY.priced[0]} หลักทรัพย์ในวันนี้ (% Change / Days to Cover แสดงเป็น "-")`;
+}
+
+async function load(d){
+  DAY = await getDay(d);
+  renderCards(); render();
+  try{ history.replaceState(null, "", "#" + d); }catch(e){}
+}
+
+function csv(){
+  const hasPrev = !!DAY.prevDate;
+  const H = ["Rank","Symbol","Short Vol Local","Short Vol NVDR","Short Vol Total","Short Value (THB)","% Short Value","Outstanding Local","Outstanding NVDR","Outstanding Total","% Outstanding/Paid-up","Close","% Change","Delta Outstanding","Carried Overnight","Days to Cover"];
+  const rows = [...document.querySelectorAll("#body tr")].length ? DAY.rows : [];
+  const vis = [...document.querySelectorAll("#body td.sym")].map(td => td.textContent);
+  const by = Object.fromEntries(rows.map(r => [r.s, r]));
+  const lines = [H.join(",")].concat(vis.map((s,i) => { const r = by[s], st = status(r, hasPrev);
+    return [i+1, s, r.lv, r.nv, r.tv, r.val, r.pv?.toFixed(4), r.los, r.nos, r.tos, r.pos?.toFixed(4), r.close, r.chg, hasPrev ? r.dOS : "", st.t, r.dtc].map(v => v ?? "").join(","); }));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv"}));
+  a.download = `SET_Short_Sales_${DAY.date}.csv`; a.click();
+}
+
+let INDEX;
+(async () => {
+  INDEX = await fetch("data/dates.json?t=" + Date.now()).then(r => r.json());
+  $("#gen").textContent = `อัปเดต ${INDEX.generated} น.`;
+  $("#date").innerHTML = INDEX.dates.map(x => `<option value="${x.date}">${thDate(x.date)}</option>`).join("");
+  const want = location.hash.slice(1);
+  if(INDEX.dates.some(x => x.date === want)) $("#date").value = want;
+  $("#date").onchange = e => load(e.target.value);
+  $("#q").oninput = render; $("#all").onchange = render; $("#csv").onclick = csv;
+  document.querySelectorAll("th.sortable").forEach(th => th.onclick = () => {
+    const k = th.dataset.k; sortDir = sortK === k ? -sortDir : (k === "s" ? 1 : -1); sortK = k; render(); });
+  const h1 = $("#h1").getBoundingClientRect().height; document.documentElement.style.setProperty("--h1", h1 + "px");
+  await load($("#date").value);
+})();
+</script>
+</body>
+</html>
