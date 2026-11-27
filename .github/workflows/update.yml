@@ -9,6 +9,10 @@ on:
   schedule:
     - cron: "45 23 * * 0-4"
   workflow_dispatch:
+    inputs:
+      refetch:
+        description: "Test: drop and rebuild the latest N dates"
+        default: "0"
   push:
     branches: [main]
     paths: [index.html, .github/workflows/update.yml]
@@ -44,6 +48,8 @@ jobs:
       - name: Fetch SET short sales + TradingView prices
         if: github.event_name != 'push'
         run: |
+          N="${{ github.event.inputs.refetch || '0' }}"
+          if [ "$N" -gt 0 ]; then ls data/20*.json | sort | tail -n "$N" | xargs rm -v; fi
           python scripts/shortsales.py data --expect-fresh || {
             echo "first attempt failed - retrying in 120 s"; sleep 120;
             python scripts/shortsales.py data --expect-fresh; }
