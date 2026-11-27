@@ -36,6 +36,7 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 PAGE = "https://www.set.or.th/th/market/statistics/short-sales/total-short-sales"
 ADV_N = 20
+START = date(2026, 11, 16)   # first date the dashboard shows (user rule 2026-11-27)
 
 FIELDS = {  # SET API name -> short key in our JSON
     "localVolume": "lv", "nvdrVolume": "nv", "totalVolume": "tv",
@@ -215,7 +216,7 @@ def main():
             print(f"WARNING: SET's latest short-sales date is {hi}, expected {expect}")
             if "--expect-fresh" in sys.argv:
                 raise SystemExit(3)
-        want, d = [], lo
+        want, d = [], max(lo, START)
         while d <= hi:
             if d.weekday() < 5 and d not in hol and d not in have:
                 want.append(d)
@@ -230,7 +231,7 @@ def main():
 
     raw_dates = {date.fromisoformat(p.stem) for p in raw_dir.glob("*.json")}
     all_dates = sorted(built | raw_dates)
-    todo = [d for d in all_dates if d in raw_dates and (rebuild or d not in built or d in new)]
+    todo = [d for d in all_dates if d >= START and d in raw_dates and (rebuild or d not in built or d in new)]
     if not todo:
         print("nothing new"); return 0
 
@@ -264,7 +265,7 @@ def main():
         print(f"  built {d}: {shorted} shorted, {priced} priced")
 
     index = []
-    for d in all_dates:
+    for d in (x for x in all_dates if x >= START):
         f = data / f"{d}.json"
         if f.exists():
             j = json.loads(f.read_text(encoding="utf-8"))

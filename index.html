@@ -10,19 +10,19 @@
 :root{
   --bg:#f6f7f9; --card:#fff; --ink:#14181f; --muted:#5f6b7a; --line:#e3e7ec; --head:#eef1f5;
   --up:#0a8f3c; --down:#d42c2c; --flat:#808080; --accent:#1f5fbf; --carry:#b3261e; --carry-bg:#fdecea;
-  --intra:#1d6b3a; --intra-bg:#e6f4ea; --cover-bg:#e8f0fe; --cover:#1f5fbf; --hl:#fff8e1;
+  --intra:#1d6b3a; --intra-bg:#e6f4ea; --cover-bg:#e8f0fe; --cover:#1f5fbf; --hl:#fff8e1; --newhead:#d9e4f5;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0f1318; --card:#171c23; --ink:#e7ebf0; --muted:#97a3b3; --line:#2a313b; --head:#1e252e;
     --up:#3ccf74; --down:#ff6b6b; --flat:#9aa4b1; --accent:#7aa7ff; --carry:#ff8a80; --carry-bg:#3a1f1e;
-    --intra:#7fdc9c; --intra-bg:#1b3325; --cover-bg:#1c2a44; --cover:#9bbcff; --hl:#2e2a1a;
+    --intra:#7fdc9c; --intra-bg:#1b3325; --cover-bg:#1c2a44; --cover:#9bbcff; --hl:#2e2a1a; --newhead:#22324a;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0f1318; --card:#171c23; --ink:#e7ebf0; --muted:#97a3b3; --line:#2a313b; --head:#1e252e;
   --up:#3ccf74; --down:#ff6b6b; --flat:#9aa4b1; --accent:#7aa7ff; --carry:#ff8a80; --carry-bg:#3a1f1e;
-  --intra:#7fdc9c; --intra-bg:#1b3325; --cover-bg:#1c2a44; --cover:#9bbcff; --hl:#2e2a1a;
+  --intra:#7fdc9c; --intra-bg:#1b3325; --cover-bg:#1c2a44; --cover:#9bbcff; --hl:#2e2a1a; --newhead:#22324a;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;font-size:14px}
@@ -47,7 +47,7 @@ th,td{padding:6px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
 thead th{background:var(--head);position:sticky;font-weight:600;font-size:12.5px;text-align:center;z-index:2;border-right:1px solid var(--line)}
 thead tr:nth-child(1) th{top:0}
 thead tr:nth-child(2) th{top:var(--h1,34px)}
-thead th.new{background:color-mix(in srgb,var(--accent) 14%,var(--head))}
+thead th.new{background:var(--newhead)}
 th.sortable{cursor:pointer;user-select:none}
 th.sortable:hover{color:var(--accent)}
 th .arr{font-size:10px;margin-left:3px;color:var(--accent)}
@@ -59,6 +59,8 @@ td.grp{border-left:1px solid var(--line)}
 td.b{font-weight:700}
 tbody tr:hover td{background:var(--hl)}
 .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}.flat{color:var(--flat);font-weight:700}
+td.carry{color:var(--carry);font-weight:700}
+td.intra{color:var(--intra);font-weight:700}
 .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
 .tag.carry{background:var(--carry-bg);color:var(--carry)}
 .tag.intra{background:var(--intra-bg);color:var(--intra)}
@@ -67,6 +69,9 @@ tbody tr:hover td{background:var(--hl)}
 .dim{color:var(--muted)}
 .notes{margin-top:16px;color:var(--muted);font-size:12.5px;line-height:1.65}
 .notes b{color:var(--ink)}
+.snap{position:absolute;left:0;top:0;z-index:-1;max-width:none;padding:24px}
+.snap th,.snap td{position:static!important}
+.snap .tablebox{max-height:none;overflow:visible}
 .warn{background:var(--carry-bg);color:var(--carry);padding:8px 12px;border-radius:8px;margin-bottom:12px;display:none}
 @media (max-width:640px){h1{font-size:18px}.card .v{font-size:17px}th,td{padding:5px 7px}}
 </style>
@@ -84,6 +89,7 @@ tbody tr:hover td{background:var(--hl)}
       <input id="q" type="search" placeholder="ค้นหาหลักทรัพย์" size="12">
       <label class="chk"><input type="checkbox" id="all"> แสดงหลักทรัพย์ที่ไม่มีการขายชอร์ตวันนี้</label>
       <button id="csv">Download CSV</button>
+      <button id="png">Download PNG</button>
     </div>
   </div>
   <div class="warn" id="warn"></div>
@@ -101,8 +107,8 @@ tbody tr:hover td{background:var(--hl)}
           <th rowspan="2" class="sortable" data-k="pos">ที่ยังไม่ได้ซื้อคืน/<br>หุ้นชำระแล้ว (%)</th>
           <th rowspan="2" class="new sortable" data-k="close">ราคาปิด</th>
           <th rowspan="2" class="new sortable" data-k="chg">% Change</th>
-          <th rowspan="2" class="new sortable" data-k="dOS">Δ ที่ยังไม่ได้ซื้อคืน<br>เทียบวันก่อน (หุ้น)</th>
-          <th rowspan="2" class="new sortable" data-k="carry">ชอร์ตวันนี้<br>ถือข้ามวัน?</th>
+          <th rowspan="2" class="new sortable" data-k="add">เพิ่มไปใน Outstanding<br>Short Sale (หุ้น)</th>
+          <th rowspan="2" class="new sortable" data-k="intra">ปิดสถานะในวัน<br>(หุ้น)</th>
           <th rowspan="2" class="new sortable" data-k="dtc">Days to Cover<br>(วัน)</th>
         </tr>
         <tr>
@@ -116,15 +122,14 @@ tbody tr:hover td{background:var(--hl)}
   <div class="notes">
     <div><b>เรียงลำดับ</b> ตามมูลค่าการขายชอร์ตจากมากไปน้อย (คลิกหัวคอลัมน์เพื่อเรียงใหม่) · คอลัมน์สีฟ้า = คอลัมน์ที่คำนวณเพิ่ม</div>
     <div><b>% Change</b> = การเปลี่ยนแปลงของราคาปิดวันนั้นเทียบกับราคาปิดวันทำการก่อนหน้า (TradingView, SET:&lt;หลักทรัพย์&gt;)</div>
-    <div><b>Δ ที่ยังไม่ได้ซื้อคืน</b> = ปริมาณที่ยังไม่ได้ซื้อคืน ณ สิ้นวัน (ทั้งหมด) − ของวันทำการก่อนหน้า ·
-      <span class="tag carry">ถือข้ามวัน</span> มีการขายชอร์ตวันนี้และยอดที่ยังไม่ได้ซื้อคืนเพิ่มขึ้น (ตัวเลขในวงเล็บ = Δ ÷ ปริมาณชอร์ตวันนี้ คือสัดส่วนโดยประมาณที่ถือข้ามวัน) ·
-      <span class="tag intra">ปิดในวัน</span> มีการขายชอร์ตวันนี้แต่ยอดที่ยังไม่ได้ซื้อคืนไม่เพิ่ม/ลดลง ·
-      <span class="tag cover">ซื้อคืน</span> ไม่มีการขายชอร์ตวันนี้แต่ยอดลดลง.
-      Δ เป็นยอดสุทธิ (ชอร์ตใหม่ที่ถือข้ามวัน − การซื้อคืนของสถานะเดิม) ดังนั้นถ้ามีการซื้อคืนสถานะเก่าในวันเดียวกัน ยอดถือข้ามวันจริงอาจสูงกว่า Δ</div>
+    <div><b>เพิ่มไปใน Outstanding Short Sale</b> = ปริมาณที่ยังไม่ได้ซื้อคืน ณ สิ้นวัน (ทั้งหมด) − ของวันทำการก่อนหน้า (ถ้าเพิ่มขึ้น) โดยไม่เกินปริมาณการขายชอร์ตวันนั้น = ส่วนที่ถือสถานะข้ามวัน ·
+      <b>ปิดสถานะในวัน</b> = ปริมาณการขายชอร์ตวันนั้น (ทั้งหมด) − ส่วนที่เพิ่มไปใน Outstanding ·
+      ยอดที่ยังไม่ได้ซื้อคืนเป็นยอดสุทธิ (ชอร์ตใหม่ที่ถือข้ามวัน − การซื้อคืนสถานะเดิม) ถ้ามีการซื้อคืนสถานะเก่าในวันเดียวกัน ส่วนที่ถือข้ามวันจริงอาจสูงกว่าที่แสดง และส่วนที่ปิดในวันอาจต่ำกว่า</div>
     <div><b>Days to Cover</b> = ปริมาณที่ยังไม่ได้ซื้อคืน ณ สิ้นวัน (ทั้งหมด) ÷ ปริมาณซื้อขายเฉลี่ย 20 วันทำการล่าสุด (รวมวันนั้น, TradingView)</div>
-    <div>ข้อมูลการขายชอร์ตที่ยังไม่ได้ซื้อคืนเป็นข้อมูลที่ตลาดหลักทรัพย์ฯ ได้รับรายงานจากสมาชิก ซึ่งปรับปรุงเมื่อมีการซื้อคืนหรือเมื่อเกิน 60 วันนับจากวันที่ขายชอร์ต · ตลท. เปิดให้ดูย้อนหลังไม่เกิน 6 เดือน · อัปเดตทุกวันจันทร์–ศุกร์ 07:00 น.</div>
+    <div>ข้อมูลการขายชอร์ตที่ยังไม่ได้ซื้อคืนเป็นข้อมูลที่ตลาดหลักทรัพย์ฯ ได้รับรายงานจากสมาชิก ซึ่งปรับปรุงเมื่อมีการซื้อคืนหรือเมื่อเกิน 60 วันนับจากวันที่ขายชอร์ต · เก็บข้อมูลตั้งแต่ 16 พ.ย. 2569 · อัปเดตทุกวันจันทร์–ศุกร์ 07:00 น.</div>
   </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const TH_MON = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
@@ -137,15 +142,13 @@ const pct = v => v == null ? "-" : nf2.format(v) + "%";
 let DAY = null, sortK = "val", sortDir = -1;
 const cache = {};
 
-function status(r, hasPrev){
-  if(!hasPrev || r.dOS == null) return {k:"na", t:"-", rank:-1};
-  if(r.tv){
-    if(r.dOS > 0){ const share = Math.min(r.dOS / r.tv, 1) * 100;
-      return {k:"carry", t:`ถือข้ามวัน (${share.toFixed(0)}%)`, rank:2 + share/1000}; }
-    return {k:"intra", t:"ปิดในวัน", rank:1};
-  }
-  if(r.dOS < 0) return {k:"cover", t:"ซื้อคืน", rank:0};
-  return {k:"na", t:"-", rank:-1};
+// Split today's short volume: the part added to the outstanding position (carried overnight)
+// = increase in outstanding vs the previous trading date, capped at today's short volume;
+// the rest was closed the same day.
+function split(r, hasPrev){
+  if(!hasPrev || r.dOS == null || !r.tv) return {add:null, intra:null};
+  const add = Math.max(0, Math.min(r.dOS, r.tv));
+  return {add, intra: r.tv - add};
 }
 function chgCls(v){ return v == null ? "dim" : v > 0 ? "up" : v < 0 ? "down" : "flat"; }
 function sgn(v, f){ return v == null ? "-" : (v > 0 ? "+" : "") + f(v); }
@@ -158,8 +161,7 @@ async function getDay(d){
 function render(){
   if(!DAY) return;
   const q = $("#q").value.trim().toUpperCase(), all = $("#all").checked, hasPrev = !!DAY.prevDate;
-  let rows = DAY.rows.map(r => ({...r, st: status(r, hasPrev)}));
-  rows.forEach(r => r.carry = r.st.rank);
+  let rows = DAY.rows.map(r => ({...r, ...split(r, hasPrev)}));
   if(!all) rows = rows.filter(r => r.tv);
   if(q) rows = rows.filter(r => r.s.includes(q));
   rows.sort((a,b) => {
@@ -176,8 +178,8 @@ function render(){
     <td>${pct(r.pos)}</td>
     <td class="grp b">${n2(r.close)}</td>
     <td class="${chgCls(r.chg)}">${r.chg == null ? "-" : sgn(r.chg, nf2.format) + "%"}</td>
-    <td class="${r.dOS > 0 ? "down" : r.dOS < 0 ? "up" : "flat"}">${hasPrev ? sgn(r.dOS, nf0.format) : "-"}</td>
-    <td style="text-align:center"><span class="tag ${r.st.k}">${r.st.t}</span></td>
+    <td class="${r.add ? "carry" : "dim"}">${n0(r.add)}</td>
+    <td class="${r.intra ? "intra" : "dim"}">${n0(r.intra)}</td>
     <td class="b">${r.dtc == null ? "-" : n2(r.dtc)}</td></tr>`).join("") ||
     `<tr><td colspan="16" style="text-align:center;padding:24px" class="dim">ไม่พบข้อมูล</td></tr>`;
   document.querySelectorAll("th.sortable").forEach(th => {
@@ -188,14 +190,16 @@ function render(){
 
 function renderCards(){
   const s = DAY.summary, sh = DAY.rows.filter(r => r.tv), hasPrev = !!DAY.prevDate;
-  const carry = sh.filter(r => hasPrev && r.dOS > 0).length, intra = sh.length - (hasPrev ? carry : sh.length);
-  const totOS = DAY.rows.reduce((a,r) => a + (r.tos||0), 0);
+  let add = 0, intra = 0;
+  sh.forEach(r => { const x = split(r, hasPrev); add += x.add || 0; intra += x.intra || 0; });
+  const totV = add + intra;
   const top = sh[0];
   $("#cards").innerHTML = [
     ["มูลค่าการขายชอร์ตรวม", `${n2(s.value/1e6)} <small>ล้านบาท</small>`],
     ["% เทียบมูลค่าซื้อขายรวม", pct(s.percentValue)],
     ["จำนวนหลักทรัพย์ที่ถูกขายชอร์ต", `${sh.length} <small>ตัว</small>`],
-    ["ถือข้ามวัน / ปิดในวัน", hasPrev ? `<span style="color:var(--carry)">${carry}</span> / <span style="color:var(--intra)">${intra}</span>` : "-"],
+    ["เพิ่มไปใน Outstanding (หุ้น)", hasPrev ? `<span style="color:var(--carry)">${n0(add)}</span> <small>${totV ? (add/totV*100).toFixed(0) : 0}%</small>` : "-"],
+    ["ปิดสถานะในวัน (หุ้น)", hasPrev ? `<span style="color:var(--intra)">${n0(intra)}</span> <small>${totV ? (intra/totV*100).toFixed(0) : 0}%</small>` : "-"],
     ["ถูกขายชอร์ตมากที่สุด", top ? `${top.s} <small>${n2(top.val/1e6)} ล้านบาท</small>` : "-"],
   ].map(([k,v]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
   const w = DAY.priced && DAY.priced[0] < DAY.priced[1];
@@ -211,15 +215,58 @@ async function load(d){
 
 function csv(){
   const hasPrev = !!DAY.prevDate;
-  const H = ["Rank","Symbol","Short Vol Local","Short Vol NVDR","Short Vol Total","Short Value (THB)","% Short Value","Outstanding Local","Outstanding NVDR","Outstanding Total","% Outstanding/Paid-up","Close","% Change","Delta Outstanding","Carried Overnight","Days to Cover"];
+  const H = ["Rank","Symbol","Short Vol Local","Short Vol NVDR","Short Vol Total","Short Value (THB)","% Short Value","Outstanding Local","Outstanding NVDR","Outstanding Total","% Outstanding/Paid-up","Close","% Change","Added to Outstanding (shares)","Closed Same Day (shares)","Days to Cover"];
   const rows = [...document.querySelectorAll("#body tr")].length ? DAY.rows : [];
   const vis = [...document.querySelectorAll("#body td.sym")].map(td => td.textContent);
   const by = Object.fromEntries(rows.map(r => [r.s, r]));
-  const lines = [H.join(",")].concat(vis.map((s,i) => { const r = by[s], st = status(r, hasPrev);
-    return [i+1, s, r.lv, r.nv, r.tv, r.val, r.pv?.toFixed(4), r.los, r.nos, r.tos, r.pos?.toFixed(4), r.close, r.chg, hasPrev ? r.dOS : "", st.t, r.dtc].map(v => v ?? "").join(","); }));
+  const lines = [H.join(",")].concat(vis.map((s,i) => { const r = by[s], x = split(r, hasPrev);
+    return [i+1, s, r.lv, r.nv, r.tv, r.val, r.pv?.toFixed(4), r.los, r.nos, r.tos, r.pos?.toFixed(4), r.close, r.chg, x.add, x.intra, r.dtc].map(v => v ?? "").join(","); }));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv"}));
   a.download = `SET_Short_Sales_${DAY.date}.csv`; a.click();
+}
+
+async function png(){
+  const btn = $("#png"), label = btn.textContent;
+  btn.disabled = true; btn.textContent = "กำลังสร้างภาพ...";
+  const box = document.createElement("div");
+  box.className = "wrap snap";
+  box.innerHTML = `<h1>SET Short Sales Dashboard · ${thDate(DAY.date)}</h1>
+    <div class="sub" style="margin-bottom:14px">ธุรกรรมขายชอร์ตรายหลักทรัพย์ (SET และ mai) · ที่มา set.or.th · ราคา/ปริมาณซื้อขาย TradingView · ${$("#gen").textContent} · pridil.github.io/set-short-sales</div>`;
+  box.appendChild($("#cards").cloneNode(true));
+  const tb = document.createElement("div"); tb.className = "tablebox";
+  tb.appendChild($("#tbl").cloneNode(true)); box.appendChild(tb);
+  box.appendChild(document.querySelector(".notes").cloneNode(true));
+  document.body.appendChild(box);
+  try{
+    box.style.width = (box.querySelector("table").scrollWidth + 48) + "px";
+    await document.fonts.ready;
+    const w = box.offsetWidth, h = box.offsetHeight;
+    const scale = Math.max(1, Math.min(2, Math.sqrt(16e6 / (w * h))));   // stay under phone canvas limits
+    const canvas = await html2canvas(box, {scale, backgroundColor: getComputedStyle(document.body).backgroundColor,
+      windowWidth: w + 600, windowHeight: h, scrollX: 0, scrollY: 0,
+      // the clone can lay the table out wider than the page did: size the box from the clone itself
+      onclone: doc => { const b = doc.querySelector(".snap"), t = b.querySelector("table");
+        t.style.width = "auto"; b.style.width = (t.offsetWidth + 52) + "px"; }});
+    // trim the blank band html2canvas leaves at the bottom
+    const ctx = canvas.getContext("2d"), bg = ctx.getImageData(1, canvas.height - 1, 1, 1).data;
+    let y = canvas.height - 1;
+    for(; y > 0; y--){
+      const row = ctx.getImageData(0, y, canvas.width, 1).data;
+      let blank = true;
+      for(let i = 0; i < row.length; i += 4)
+        if(Math.abs(row[i]-bg[0]) + Math.abs(row[i+1]-bg[1]) + Math.abs(row[i+2]-bg[2]) > 30){ blank = false; break; }
+      if(!blank) break;
+    }
+    const out = document.createElement("canvas"), pad = Math.round(24 * scale);
+    out.width = canvas.width; out.height = Math.min(canvas.height, y + 1 + pad);
+    const octx = out.getContext("2d");
+    octx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`; octx.fillRect(0, 0, out.width, out.height);
+    octx.drawImage(canvas, 0, 0);
+    const a = document.createElement("a");
+    a.href = out.toDataURL("image/png"); a.download = `SET_Short_Sales_${DAY.date}.png`; a.click();
+  }catch(e){ alert("สร้างภาพไม่สำเร็จ: " + e.message); }
+  finally{ box.remove(); btn.disabled = false; btn.textContent = label; }
 }
 
 let INDEX;
@@ -230,7 +277,7 @@ let INDEX;
   const want = location.hash.slice(1);
   if(INDEX.dates.some(x => x.date === want)) $("#date").value = want;
   $("#date").onchange = e => load(e.target.value);
-  $("#q").oninput = render; $("#all").onchange = render; $("#csv").onclick = csv;
+  $("#q").oninput = render; $("#all").onchange = render; $("#csv").onclick = csv; $("#png").onclick = png;
   document.querySelectorAll("th.sortable").forEach(th => th.onclick = () => {
     const k = th.dataset.k; sortDir = sortK === k ? -sortDir : (k === "s" ? 1 : -1); sortK = k; render(); });
   const h1 = $("#h1").getBoundingClientRect().height; document.documentElement.style.setProperty("--h1", h1 + "px");
