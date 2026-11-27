@@ -36,7 +36,7 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 PAGE = "https://www.set.or.th/th/market/statistics/short-sales/total-short-sales"
 ADV_N = 20
-Z_N = 5      # Z-score of short volume vs the previous Z_N trading days
+Z_N = 10     # Z-score of short volume vs the previous Z_N trading days, only dates >= START (user rule 2026-11-27)
 START = date(2026, 11, 16)   # first date the dashboard shows (user rule 2026-11-27)
 
 FIELDS = {  # SET API name -> short key in our JSON
@@ -190,7 +190,7 @@ def build_day(d, raw, prev_rows, bars, prev_tv=()):
         close, chg, adv = price_stats(bars.get(r["symbol"]), d)
         row["close"], row["chg"], row["adv20"] = close, r2(chg), r2(adv, 0)
         row["dtc"] = r2(tos / adv) if adv and tos else (0 if adv else None)
-        row["z5"] = zscore(row["tv"] or 0, [m.get(r["symbol"], 0) for m in prev_tv])
+        row["z10"] = zscore(row["tv"] or 0, [m.get(r["symbol"], 0) for m in prev_tv])
         rows.append(row)
     rows.sort(key=lambda x: -(x["val"] or 0))
     s = raw.get("summary") or {}
@@ -268,7 +268,8 @@ def main():
     for d in todo:
         i = all_dates.index(d)
         prev_rows = tos_on(all_dates[i - 1]) if i > 0 else None
-        prev_tv = [{k: v["tv"] or 0 for k, v in tos_on(x).items()} for x in all_dates[max(0, i - Z_N):i]]
+        hist = [x for x in all_dates[:i] if x >= START][-Z_N:]
+        prev_tv = [{k: v["tv"] or 0 for k, v in tos_on(x).items()} for x in hist]
         raw = json.loads((raw_dir / f"{d}.json").read_text(encoding="utf-8"))
         out = build_day(d, raw, prev_rows, bars, prev_tv)
         out["prevDate"] = all_dates[i - 1].isoformat() if i > 0 else None

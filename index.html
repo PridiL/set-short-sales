@@ -101,8 +101,9 @@ td.quad{text-align:left}
           <th rowspan="2">#</th>
           <th rowspan="2" class="sym sortable" data-k="s">Symbol</th>
           <th rowspan="2" class="sortable" data-k="tv">Short Sale Volume<br>(Shares)</th>
-          <th rowspan="2" class="new sortable" data-k="z5">Z-Score<br>(vs Prev 5D)</th>
+          <th rowspan="2" class="new sortable" data-k="z10">Z-Score<br>(vs Prev 10D)</th>
           <th rowspan="2" class="sortable" data-k="val">Short Sale Value<br>(Baht)</th>
+          <th rowspan="2" class="sortable" data-k="pv">% of Trading<br>Value</th>
           <th colspan="4">Outstanding Short Sale Volume (Shares)</th>
           <th rowspan="2" class="sortable" data-k="close">Closing Price</th>
           <th rowspan="2" class="new sortable" data-k="chg">% Change</th>
@@ -119,7 +120,8 @@ td.quad{text-align:left}
   <div class="notes">
     <div><b>Sorting:</b> by Short Sale Value, largest first (click a column header to re-sort) · Blue columns = calculated columns</div>
     <div><b>% Change</b> = Closing Price vs the previous trading day's close (TradingView, SET:&lt;symbol&gt;)</div>
-    <div><b>Z-Score (vs Prev 5D)</b> = (Short Sale Volume today − average of the previous 5 trading days) ÷ standard deviation (sample) of those 5 days; a day with no short sale counts as 0 · "-" = the 5 previous days were all equal</div>
+    <div><b>% of Trading Value</b> = Short Sale Value ÷ the security's total trading value that day (SET)</div>
+    <div><b>Z-Score (vs Prev 10D)</b> = (Short Sale Volume today − average of the previous 10 trading days) ÷ standard deviation (sample) of those 10 days; only days since 16 Nov 2026 are used, and a day with no short sale counts as 0 · "-" = fewer than 10 previous days of data yet, or the 10 days were all equal</div>
     <div><b>Total T-1</b> = Outstanding Short Sale Volume at the end of the previous trading day · <b>Change (Shares) / Change (%)</b> = Total vs Total T-1 (New = no outstanding position on the previous day)</div>
     <div><b>Short Position Quadrant</b> (% Change × Outstanding Change): <b>Covering Rally</b> = price up, outstanding down · <b>Short Absorption</b> = price up, outstanding up · <b>Weak Demand</b> = price down, outstanding down · <b>Short Build Up</b> = price down, outstanding up · "-" = price or outstanding unchanged, or no data</div>
     <div><b>Days to Cover</b> =Outstanding Short Sale Volume (Total) ÷ average daily trading volume of the last 20 trading days, including that day (TradingView)</div>
@@ -173,8 +175,9 @@ function render(){
   $("#body").innerHTML = rows.map((r,i) => `<tr>
     <td class="rank">${i+1}</td><td class="sym">${r.s}</td>
     <td class="grp b">${n0(r.tv)}</td>
-    <td class="${osCls(r.z5)}">${r.z5 == null ? "-" : sgn(r.z5, nf2.format)}</td>
+    <td class="${osCls(r.z10)}">${r.z10 == null ? "-" : sgn(r.z10, nf2.format)}</td>
     <td class="grp b">${n2(r.val)}</td>
+    <td>${pct(r.pv)}</td>
     <td class="grp">${n0(r.ptos)}</td>
     <td class="b">${n0(r.tos)}</td>
     <td class="${osCls(r.dOS)}">${r.dOS == null ? "-" : sgn(r.dOS, nf0.format)}</td>
@@ -183,7 +186,7 @@ function render(){
     <td class="${chgCls(r.chg)}">${r.chg == null ? "-" : sgn(r.chg, nf2.format) + "%"}</td>
     <td class="b">${r.dtc == null ? "-" : n2(r.dtc)}</td>
     <td class="quad">${r.qn ? `<span class="qt q${r.qn}">${QUADS[r.qn]}</span>` : `<span class="dim">-</span>`}</td></tr>`).join("") ||
-    `<tr><td colspan="13" style="text-align:center;padding:24px" class="dim">No data</td></tr>`;
+    `<tr><td colspan="14" style="text-align:center;padding:24px" class="dim">No data</td></tr>`;
   document.querySelectorAll("th.sortable").forEach(th => {
     th.querySelector(".arr")?.remove();
     if(th.dataset.k === sortK) th.insertAdjacentHTML("beforeend", `<span class="arr">${sortDir < 0 ? "▼" : "▲"}</span>`);
@@ -212,13 +215,13 @@ async function load(d){
 
 function csv(){
   const hasPrev = !!DAY.prevDate;
-  const H = ["Rank","Symbol","Short Sale Volume (Shares)","Z-Score (vs Prev 5D)","Short Sale Value (Baht)","Outstanding Short Sale Volume Total T-1","Outstanding Short Sale Volume Total","Outstanding Change (Shares)","Outstanding Change (%)","Closing Price","% Change","Days to Cover","Short Position Quadrant"];
+  const H = ["Rank","Symbol","Short Sale Volume (Shares)","Z-Score (vs Prev 10D)","Short Sale Value (Baht)","% of Trading Value","Outstanding Short Sale Volume Total T-1","Outstanding Short Sale Volume Total","Outstanding Change (Shares)","Outstanding Change (%)","Closing Price","% Change","Days to Cover","Short Position Quadrant"];
   const rows = [...document.querySelectorAll("#body tr")].length ? DAY.rows : [];
   const vis = [...document.querySelectorAll("#body td.sym")].map(td => td.textContent);
   const by = Object.fromEntries(rows.map(r => [r.s, r]));
   const lines = [H.join(",")].concat(vis.map((s,i) => { const r = by[s];
     const p = osPct(r, hasPrev);
-    return [i+1, s, r.tv, r.z5, r.val, hasPrev ? r.ptos : "", r.tos, hasPrev ? r.dOS : "", p == null ? "" : p.toFixed(2), r.close, r.chg, r.dtc, QUADS[quadOf(r.chg, hasPrev ? r.dOS : null)]].map(v => v ?? "").join(","); }));
+    return [i+1, s, r.tv, r.z10, r.val, r.pv == null ? "" : r.pv.toFixed(2), hasPrev ? r.ptos : "", r.tos, hasPrev ? r.dOS : "", p == null ? "" : p.toFixed(2), r.close, r.chg, r.dtc, QUADS[quadOf(r.chg, hasPrev ? r.dOS : null)]].map(v => v ?? "").join(","); }));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv"}));
   a.download = `SET_Short_Sales_${DAY.date}.csv`; a.click();
