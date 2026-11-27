@@ -1,4 +1,4 @@
-"""Daily split-adjusted bars from TradingView's chart websocket (anonymous), many symbols per connection."""
+"""Daily split-adjusted bars (index = bar start, Bangkok time) from TradingView's chart websocket (anonymous), many symbols per connection."""
 import hashlib
 import json
 import re
@@ -47,7 +47,9 @@ def tv_daily(symbols: list[str], n: int = 8000, timeout: float = 60, adjustment:
                     elif m == "series_completed":
                         rows = [(b["v"] + [None] * 6)[:6] for b in got]
                         df = pd.DataFrame(rows, columns=["t", "open", "high", "low", "close", "volume"])
-                        df.index = pd.to_datetime([datetime.fromtimestamp(t, ICT).date() for t in df.pop("t")])
+                        # keep the Bangkok timestamp: night-session bars (DRs, 19:00 start) belong
+                        # to the NEXT trading day - the caller maps them
+                        df.index = pd.to_datetime([datetime.fromtimestamp(t, ICT).replace(tzinfo=None) for t in df.pop("t")])
                         out[sym] = df[~df.index.duplicated(keep="last")].sort_index()
                     elif m in ("symbol_error", "series_error", "critical_error", "protocol_error"):
                         out[sym] = f"{m} {p}"

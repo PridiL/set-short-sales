@@ -15,7 +15,7 @@ on:
         default: "0"
   push:
     branches: [main]
-    paths: [index.html, .github/workflows/update.yml]
+    paths: [index.html, "data/**", .github/workflows/update.yml]
 
 permissions:
   contents: write

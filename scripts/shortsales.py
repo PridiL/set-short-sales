@@ -103,8 +103,15 @@ def holidays(page_fetch, start: date, end: date) -> set:
     return out
 
 
-def bars_for(symbols, n):
-    """{symbol: DataFrame} from TradingView, 6 sockets in parallel."""
+def bars_for(symbols, n, trading_days):
+    """{symbol: DataFrame indexed by SET trading date} from TradingView, 6 sockets in parallel.
+
+    A bar that starts in the evening (DR night session, 19:00) belongs to the next SET trading
+    day; one with no known next trading day (today's bar still forming) is dropped.
+    """
+    import bisect
+    import pandas as pd
+    days = sorted(trading_days)
     syms = sorted(symbols)
     chunks = [syms[i::6] for i in range(6)]
     out = {}
@@ -115,7 +122,25 @@ def bars_for(symbols, n):
     bad = [s for s, v in out.items() if isinstance(v, str)]
     if bad:
         print(f"  TradingView had no bars for {len(bad)}: {' '.join(bad[:30])}{' ...' if len(bad) > 30 else ''}")
-    return {s: v for s, v in out.items() if not isinstance(v, str)}
+    good, shifted = {}, 0
+    for s, df in out.items():
+        if isinstance(df, str):
+            continue
+        idx = []
+        for ts in df.index:
+            d = ts.date()
+            if ts.hour >= 17:
+                j = bisect.bisect_right(days, d)
+                d = days[j] if j < len(days) else None
+                shifted += 1
+            idx.append(pd.Timestamp(d) if d else pd.NaT)
+        df = df.copy()
+        df.index = pd.DatetimeIndex(idx)
+        df = df[df.index.notna()]
+        good[s] = df[~df.index.duplicated(keep="last")].sort_index()
+    if shifted:
+        print(f"  {shifted} evening-session bars mapped to the next trading day")
+    return good
 
 
 def price_stats(df, d):
@@ -216,7 +241,7 @@ def main():
         raw = json.loads((raw_dir / f"{d}.json").read_text(encoding="utf-8"))
         symbols |= {r["symbol"] for r in raw["list"]["shortSales"]}
     print(f"TradingView bars: {len(symbols)} symbols x {n_bars}")
-    bars = bars_for(symbols, n_bars)
+    bars = bars_for(symbols, n_bars, all_dates)
 
     def tos_on(day):
         f = data / f"{day}.json"
